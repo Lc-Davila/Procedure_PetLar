@@ -1,7 +1,7 @@
 CREATE DATABASE IF NOT EXISTS PetLar;
 USE PetLar;
 
-CREATE TABLE Endereco (
+CREATE TABLE IF NOT EXISTS Endereco (
     id_endereco INT AUTO_INCREMENT PRIMARY KEY,
     rua VARCHAR(100) NOT NULL,
     numero VARCHAR(10) NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE Endereco (
     estado CHAR(2) NOT NULL
 );
 
-CREATE TABLE Usuario (
+CREATE TABLE IF NOT EXISTS Usuario (
     id_usuario INT AUTO_INCREMENT PRIMARY KEY,
     nome_completo VARCHAR(100) NOT NULL,
     cpf CHAR(11) NOT NULL UNIQUE,
@@ -21,12 +21,12 @@ CREATE TABLE Usuario (
     FOREIGN KEY (id_endereco) REFERENCES Endereco(id_endereco)
 );
 
-CREATE TABLE Formulario (
+CREATE TABLE IF NOT EXISTS Formulario (
     id_formulario INT AUTO_INCREMENT PRIMARY KEY,
     respostas TEXT NOT NULL
 );
 
-CREATE TABLE Usuario_Formulario (
+CREATE TABLE IF NOT EXISTS Usuario_Formulario (
     id_usuario INT NOT NULL,
     id_formulario INT NOT NULL,
     PRIMARY KEY (id_usuario, id_formulario),
@@ -34,14 +34,14 @@ CREATE TABLE Usuario_Formulario (
     FOREIGN KEY (id_formulario) REFERENCES Formulario(id_formulario)
 );
 
-CREATE TABLE ONG (
+CREATE TABLE IF NOT EXISTS ONG (
     id_ong INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
     id_endereco INT NOT NULL,
     FOREIGN KEY (id_endereco) REFERENCES Endereco(id_endereco)
 );
 
-CREATE TABLE Pet (
+CREATE TABLE IF NOT EXISTS Pet (
     id_pet INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(50) NOT NULL,
     especie VARCHAR(30) NOT NULL,
@@ -53,13 +53,13 @@ CREATE TABLE Pet (
     FOREIGN KEY (id_ong) REFERENCES ONG(id_ong)
 );
 
-CREATE TABLE Carteira_Vacinacao (
+CREATE TABLE IF NOT EXISTS Carteira_Vacinacao (
     id_carteira INT AUTO_INCREMENT PRIMARY KEY,
     id_pet INT UNIQUE NOT NULL,
     FOREIGN KEY (id_pet) REFERENCES Pet(id_pet)
 );
 
-CREATE TABLE Vacina (
+CREATE TABLE IF NOT EXISTS Vacina (
     id_vacina INT AUTO_INCREMENT PRIMARY KEY,
     id_carteira INT NOT NULL,
     nome_vacina VARCHAR(100) NOT NULL,
@@ -67,7 +67,7 @@ CREATE TABLE Vacina (
     FOREIGN KEY (id_carteira) REFERENCES Carteira_Vacinacao(id_carteira)
 );
 
-CREATE TABLE Solicitacao_Adocao (
+CREATE TABLE IF NOT EXISTS Solicitacao_Adocao (
     id_solicitacao INT AUTO_INCREMENT PRIMARY KEY,
     id_usuario INT NOT NULL,
     id_pet INT NOT NULL,
@@ -80,30 +80,14 @@ CREATE TABLE Solicitacao_Adocao (
     FOREIGN KEY (id_ong) REFERENCES ONG(id_ong)
 );
 
-CREATE TABLE Adocao (
+CREATE TABLE IF NOT EXISTS Adocao (
     id_adocao INT AUTO_INCREMENT PRIMARY KEY,
     id_solicitacao INT NOT NULL UNIQUE,
     data_adocao DATE NOT NULL,
     FOREIGN KEY (id_solicitacao) REFERENCES Solicitacao_Adocao(id_solicitacao)
 );
 
-DELIMITER //
-CREATE TRIGGER trg_criar_adocao
-AFTER UPDATE ON Solicitacao_Adocao
-FOR EACH ROW
-BEGIN
-    IF NEW.status = 'Aprovado' AND OLD.status <> 'Aprovado' THEN
-        INSERT INTO Adocao (id_solicitacao, data_adocao)
-        VALUES (NEW.id_solicitacao, CURDATE());
-    END IF;
-END;
-//
-DELIMITER ;
-
-
-
--------cria a databse depois coloca os inserts-------------
-
+-- OS INSERTS SÃO DEPOIS DOS PROCEDURES E DAS TABELAS!
 
 INSERT INTO Endereco (rua, numero, complemento, bairro, cidade, estado) VALUES
 ('Rua A', '100', NULL, 'Centro', 'São Paulo', 'SP'),
@@ -195,13 +179,21 @@ INSERT INTO Solicitacao_Adocao (id_usuario, id_pet, id_ong, status, observacao) 
 (9,9,9,'Pendente','Interesse no Zeus'),
 (10,10,10,'Aprovado','Histórico confirmado');
 
+
+DELIMITER $$
+
 CREATE PROCEDURE CadastrarONG(
     IN nome_ong VARCHAR(100),
     IN id_endereco INT
 )
 BEGIN
     INSERT INTO ONG (nome, id_endereco) VALUES (nome_ong, id_endereco);
-END;
+END $$
+
+DELIMITER ;
+
+
+DELIMITER $$
 
 CREATE PROCEDURE CadastrarPet(
     IN nome VARCHAR(50),
@@ -215,7 +207,7 @@ CREATE PROCEDURE CadastrarPet(
 BEGIN
     INSERT INTO Pet (nome, especie, raca, data_nascimento, sexo, origem, id_ong)
     VALUES (nome, especie, raca, data_nascimento, sexo, origem, id_ong);
-END;
+END $$
 
 CREATE PROCEDURE CadastrarUsuario(
     IN nome VARCHAR(100),
@@ -227,7 +219,7 @@ CREATE PROCEDURE CadastrarUsuario(
 BEGIN
     INSERT INTO Usuario (nome_completo, cpf, data_nascimento, email, id_endereco)
     VALUES (nome, cpf, data_nasc, email, id_endereco);
-END;
+END $$
 
 CREATE PROCEDURE CadastrarVacina(
     IN id_carteira INT,
@@ -237,12 +229,12 @@ CREATE PROCEDURE CadastrarVacina(
 BEGIN
     INSERT INTO Vacina (id_carteira, nome_vacina, data_aplicacao)
     VALUES (id_carteira, nome_vacina, data_aplicacao);
-END;
+END $$
 
 CREATE PROCEDURE ListarPetsPorONG(IN id INT)
 BEGIN
     SELECT * FROM Pet WHERE id_ong = id;
-END;
+END $$
 
 CREATE PROCEDURE ConsultarVacinasPet(IN id_pet INT)
 BEGIN
@@ -250,7 +242,7 @@ BEGIN
     FROM Vacina v
     JOIN Carteira_Vacinacao c ON v.id_carteira = c.id_carteira
     WHERE c.id_pet = id_pet;
-END;
+END $$
 
 CREATE PROCEDURE RegistrarSolicitacao(
     IN id_usuario INT,
@@ -261,7 +253,7 @@ CREATE PROCEDURE RegistrarSolicitacao(
 BEGIN
     INSERT INTO Solicitacao_Adocao (id_usuario, id_pet, id_ong, observacao)
     VALUES (id_usuario, id_pet, id_ong, observacao);
-END;
+END $$
 
 CREATE PROCEDURE AtualizarStatusSolicitacao(
     IN id_solicitacao INT,
@@ -271,22 +263,22 @@ BEGIN
     UPDATE Solicitacao_Adocao
     SET status = novo_status
     WHERE id_solicitacao = id_solicitacao;
-END;
+END $$
 
 CREATE PROCEDURE ContarPendentes(OUT total INT)
 BEGIN
     SELECT COUNT(*) INTO total FROM Solicitacao_Adocao WHERE status = 'Pendente';
-END;
+END $$
 
 CREATE PROCEDURE ContarAdocoesConcluidas(OUT total INT)
 BEGIN
     SELECT COUNT(*) INTO total FROM Adocao;
-END;
+END $$
 
 CREATE PROCEDURE BuscarUsuarioPorCPF(IN cpfBusca CHAR(11))
 BEGIN
     SELECT * FROM Usuario WHERE cpf = cpfBusca;
-END;
+END $$
 
 CREATE PROCEDURE ListarPetsDisponiveis()
 BEGIN
@@ -297,7 +289,7 @@ BEGIN
         FROM Solicitacao_Adocao s
         WHERE s.status = 'Aprovado'
     );
-END;
+END $$
 
 CREATE PROCEDURE HistoricoAdocoesUsuario(IN id_usuario INT)
 BEGIN
@@ -307,12 +299,12 @@ BEGIN
     JOIN Pet p ON s.id_pet = p.id_pet
     JOIN ONG o ON s.id_ong = o.id_ong
     WHERE s.id_usuario = id_usuario;
-END;
+END $$
 
 CREATE PROCEDURE ExcluirSolicitacao(IN id INT)
 BEGIN
     DELETE FROM Solicitacao_Adocao WHERE id_solicitacao = id;
-END;
+END $$
 
 CREATE PROCEDURE AtualizarPet(
     IN id INT,
@@ -324,4 +316,6 @@ BEGIN
     UPDATE Pet
     SET nome = novo_nome, raca = nova_raca, origem = nova_origem
     WHERE id_pet = id;
-END;
+END $$
+
+DELIMITER ;
