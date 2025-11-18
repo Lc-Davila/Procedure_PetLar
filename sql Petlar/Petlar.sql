@@ -319,3 +319,37 @@ BEGIN
 END $$
 
 DELIMITER ;
+
+CALL CadastrarONG('Nova ONG Teste', 3);
+
+CALL CadastrarPet('Toby','Cachorro','Poodle','2020-09-09','Macho','Doado',6),
+;
+
+CALL CadastrarUsuario('Fernanda Costa','56789012345','1995-07-07','fernanda@email.com',5),
+
+CALL CadastrarVacina(1, 'V10 Reforço', '2024-01-15');
+
+CALL ListarPetsPorONG(2);
+
+CALL ConsultarVacinasPet(3);
+
+CALL RegistrarSolicitacao(1, 5, 3, 'Tenho interesse em adotar');
+
+CALL AtualizarStatusSolicitacao(2, 'Aprovado');
+
+CALL ContarPendentes(@total);
+SELECT @total AS TotalPendentes;
+
+CALL ContarAdocoesConcluidas(@total);
+SELECT @total AS TotalAdocoesConcluidas;
+
+CALL BuscarUsuarioPorCPF('12345678901');
+
+CALL ListarPetsDisponiveis();
+
+CALL HistoricoAdocoesUsuario(5);
+
+CALL ExcluirSolicitacao(4);
+
+CALL AtualizarPet(3, 'Buddy', 'Beagle Atualizado', 'Doado');
+
