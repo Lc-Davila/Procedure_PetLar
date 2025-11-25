@@ -182,7 +182,7 @@ INSERT INTO Solicitacao_Adocao (id_usuario, id_pet, id_ong, status, observacao) 
 
 DELIMITER $$
 
-CREATE PROCEDURE CadastrarONG(
+CREATE PROCEDURE IF NOT EXISTS CadastrarONG(
     IN nome_ong VARCHAR(100),
     IN id_endereco INT
 )
@@ -190,18 +190,13 @@ BEGIN
     INSERT INTO ONG (nome, id_endereco) VALUES (nome_ong, id_endereco);
 END $$
 
-DELIMITER ;
-
-
-DELIMITER $$
-
-CREATE PROCEDURE CadastrarPet(
+CREATE PROCEDURE IF NOT EXISTS CadastrarPet(
     IN nome VARCHAR(50),
     IN especie VARCHAR(30),
     IN raca VARCHAR(50),
     IN data_nascimento DATE,
-    IN sexo ENUM('Macho', 'Fêmea'),
-    IN origem ENUM('Resgatado', 'Nascido na ONG', 'Doado'),
+    IN sexo VARCHAR(10),
+    IN origem VARCHAR(30),
     IN id_ong INT
 )
 BEGIN
@@ -209,7 +204,7 @@ BEGIN
     VALUES (nome, especie, raca, data_nascimento, sexo, origem, id_ong);
 END $$
 
-CREATE PROCEDURE CadastrarUsuario(
+CREATE PROCEDURE IF NOT EXISTS CadastrarUsuario(
     IN nome VARCHAR(100),
     IN cpf CHAR(11),
     IN data_nasc DATE,
@@ -221,7 +216,7 @@ BEGIN
     VALUES (nome, cpf, data_nasc, email, id_endereco);
 END $$
 
-CREATE PROCEDURE CadastrarVacina(
+CREATE PROCEDURE IF NOT EXISTS CadastrarVacina(
     IN id_carteira INT,
     IN nome_vacina VARCHAR(100),
     IN data_aplicacao DATE
@@ -231,12 +226,12 @@ BEGIN
     VALUES (id_carteira, nome_vacina, data_aplicacao);
 END $$
 
-CREATE PROCEDURE ListarPetsPorONG(IN id INT)
+CREATE PROCEDURE IF NOT EXISTS ListarPetsPorONG(IN id INT)
 BEGIN
     SELECT * FROM Pet WHERE id_ong = id;
 END $$
 
-CREATE PROCEDURE ConsultarVacinasPet(IN id_pet INT)
+CREATE PROCEDURE IF NOT EXISTS ConsultarVacinasPet(IN id_pet INT)
 BEGIN
     SELECT v.nome_vacina, v.data_aplicacao
     FROM Vacina v
@@ -244,7 +239,7 @@ BEGIN
     WHERE c.id_pet = id_pet;
 END $$
 
-CREATE PROCEDURE RegistrarSolicitacao(
+CREATE PROCEDURE IF NOT EXISTS RegistrarSolicitacao(
     IN id_usuario INT,
     IN id_pet INT,
     IN id_ong INT,
@@ -255,62 +250,62 @@ BEGIN
     VALUES (id_usuario, id_pet, id_ong, observacao);
 END $$
 
-CREATE PROCEDURE AtualizarStatusSolicitacao(
-    IN id_solicitacao INT,
-    IN novo_status ENUM('Pendente', 'Aprovado', 'Recusado')
+CREATE PROCEDURE IF NOT EXISTS AtualizarStatusSolicitacao(
+    IN pid_solicitacao INT,
+    IN novo_status VARCHAR(10)
 )
 BEGIN
     UPDATE Solicitacao_Adocao
     SET status = novo_status
-    WHERE id_solicitacao = id_solicitacao;
+    WHERE id_solicitacao = pid_solicitacao;
 END $$
 
-CREATE PROCEDURE ContarPendentes(OUT total INT)
+CREATE PROCEDURE IF NOT EXISTS ContarPendentes(OUT total INT)
 BEGIN
     SELECT COUNT(*) INTO total FROM Solicitacao_Adocao WHERE status = 'Pendente';
 END $$
 
-CREATE PROCEDURE ContarAdocoesConcluidas(OUT total INT)
+CREATE PROCEDURE IF NOT EXISTS ContarAdocoesConcluidas(OUT total INT)
 BEGIN
     SELECT COUNT(*) INTO total FROM Adocao;
 END $$
 
-CREATE PROCEDURE BuscarUsuarioPorCPF(IN cpfBusca CHAR(11))
+CREATE PROCEDURE IF NOT EXISTS BuscarUsuarioPorCPF(IN cpfBusca CHAR(11))
 BEGIN
     SELECT * FROM Usuario WHERE cpf = cpfBusca;
 END $$
 
-CREATE PROCEDURE ListarPetsDisponiveis()
+CREATE PROCEDURE IF NOT EXISTS ListarPetsDisponiveis()
 BEGIN
     SELECT p.*
     FROM Pet p
     WHERE p.id_pet NOT IN (
-        SELECT s.id_pet
-        FROM Solicitacao_Adocao s
-        WHERE s.status = 'Aprovado'
+        SELECT id_pet
+        FROM Solicitacao_Adocao
+        WHERE status = 'Aprovado'
     );
 END $$
 
-CREATE PROCEDURE HistoricoAdocoesUsuario(IN id_usuario INT)
+CREATE PROCEDURE IF NOT EXISTS HistoricoAdocoesUsuario(IN uid INT)
 BEGIN
     SELECT a.id_adocao, p.nome AS nome_pet, a.data_adocao, o.nome AS nome_ong
     FROM Adocao a
     JOIN Solicitacao_Adocao s ON a.id_solicitacao = s.id_solicitacao
     JOIN Pet p ON s.id_pet = p.id_pet
     JOIN ONG o ON s.id_ong = o.id_ong
-    WHERE s.id_usuario = id_usuario;
+    WHERE s.id_usuario = uid;
 END $$
 
-CREATE PROCEDURE ExcluirSolicitacao(IN id INT)
+CREATE PROCEDURE IF NOT EXISTS ExcluirSolicitacao(IN id INT)
 BEGIN
     DELETE FROM Solicitacao_Adocao WHERE id_solicitacao = id;
 END $$
 
-CREATE PROCEDURE AtualizarPet(
+CREATE PROCEDURE IF NOT EXISTS AtualizarPet(
     IN id INT,
     IN novo_nome VARCHAR(50),
     IN nova_raca VARCHAR(50),
-    IN nova_origem ENUM('Resgatado', 'Nascido na ONG', 'Doado')
+    IN nova_origem VARCHAR(30)
 )
 BEGIN
     UPDATE Pet
@@ -320,35 +315,3 @@ END $$
 
 DELIMITER ;
 
-CALL CadastrarONG('Nova ONG Teste', 3);
-
-CALL CadastrarPet('Toby','Cachorro','Poodle','2020-09-09','Macho','Doado',6),
-;
-
-CALL CadastrarUsuario('Fernanda Costa','56789012345','1995-07-07','fernanda@email.com',5),
-
-CALL CadastrarVacina(3,'V10','2023-06-10');
-
-CALL ListarPetsPorONG(2);
-
-CALL ConsultarVacinasPet(3);
-
-CALL Solicitação_Adoção(6,6,6,'Pendente','Interesse no Toby');
-
-CALL AtualizarStatusSolicitacao(2, 'Aprovado');
-
-CALL ContarPendentes(@total);
-SELECT @total AS TotalPendentes;
-
-CALL ContarAdocoesConcluidas(@total);
-SELECT @total AS TotalAdocoesConcluidas;
-
-CALL BuscarUsuarioPorCPF('12345678901');
-
-CALL ListarPetsDisponiveis();
-
-CALL HistoricoAdocoesUsuario(5);
-
-CALL ExcluirSolicitacao(4);
-
-CALL AtualizarPet('Toby','Cachorro','Poodle','2020-09-09','Macho','Doado',6);
